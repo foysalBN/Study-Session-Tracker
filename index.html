@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Time Tracker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+        body {
+            background: #000;
+            font-family: "Montserrat", sans-serif;
+        }
+
+        #clock {
+            font-weight: 900;
+            font-size: 4em;
+            text-align: center;
+            color: white;
+            padding-top: 1em;
+        }
+        #clock sub {
+            font-size: 0.5em;
+            /* vertical-align: sub;  */
+        }
+        .slide {
+            display: inline-block;
+            animation: slide 1s ease-in-out infinite;
+        }
+        @keyframes slide {
+            0% { transform: translateY(0); }
+            25% { transform: translateY(-5px); }
+            50% { transform: translateY(0); }
+            75% { transform: translateY(5px); }
+            100% { transform: translateY(0); }
+        }
+        button {
+            display: block;
+            margin: 0 auto;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #totalDuration {
+            text-align: center;
+            color: white;
+            font-size: 1.5em;
+            margin: 20px 0;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            color: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #222;
+            font-weight: 600;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #111;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: #000;
+        }
+        #clearButton {
+            display: block;
+            margin: 0 auto;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            color: white;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #clearButton:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock"></div>
+    <br>
+    <button id="sessionButton">Start Session</button>
+    <div id="totalDuration">Total Study Duration: <br> 0 Hours 0 Minutes</div>
+    <table id="sessionTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Session entries will be added here -->
+        </tbody>
+    </table>
+    <button id="clearButton">Clear All Sessions</button>
+    <script>
+        let sessionActive = false;
+        let sessionStartTime;
+        let sessionInterval;
+        const sessionTable = document.getElementById('sessionTable').getElementsByTagName('tbody')[0];
+        const sessionButton = document.getElementById('sessionButton');
+        const totalDurationDiv = document.getElementById('totalDuration');
+        const clearButton = document.getElementById('clearButton');
+
+        function updateClock() {
+            const now = new Date();
+            const hours12 = (now.getHours() % 12 || 12).toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+            // document.getElementById('clock').innerHTML = `${hours12}:${minutes}:<span class="slide">${seconds}</span> <br> <sub>${ampm}</sub>`;
+            document.getElementById('clock').innerHTML = `${hours12}:${minutes}:<span class="slide">${seconds}</span>`;
+        }
+
+        function startSession() {
+            sessionActive = true;
+            sessionStartTime = new Date();
+            sessionButton.textContent = 'Stop Session';
+            sessionInterval = setInterval(updateDuration, 1000);
+            addSessionToTable(sessionStartTime, null, '0 Hr 0 Min');
+        }
+
+        function stopSession() {
+            sessionActive = false;
+            clearInterval(sessionInterval);
+            const endTime = new Date();
+            const duration = calculateDuration(sessionStartTime, endTime);
+            updateLastSession(endTime, duration);
+            sessionButton.textContent = 'Start Session';
+        }
+
+        function updateDuration() {
+            if (sessionActive) {
+                const now = new Date();
+                const duration = calculateDuration(sessionStartTime, now);
+                updateLastSession(null, duration);
+                updateTotalDuration();
+            }
+        }
+
+        function calculateDuration(start, end) {
+            const diff = Math.floor((end - start) / 1000);
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            return `${hours} Hr ${minutes} Min`;
+        }
+
+        function addSessionToTable(startTime, endTime, duration) {
+            const row = sessionTable.insertRow();
+            const slCell = row.insertCell(0);
+            const startCell = row.insertCell(1);
+            const endCell = row.insertCell(2);
+            const durationCell = row.insertCell(3);
+            slCell.textContent = sessionTable.rows.length;
+            startCell.textContent = startTime.toLocaleTimeString();
+            endCell.textContent = endTime ? endTime.toLocaleTimeString() : '';
+            durationCell.textContent = duration;
+            saveSessions();
+            updateTotalDuration();
+        }
+
+        function updateLastSession(endTime, duration) {
+            const lastRow = sessionTable.rows[sessionTable.rows.length - 1];
+            if (endTime) {
+                lastRow.cells[2].textContent = endTime.toLocaleTimeString();
+            }
+            lastRow.cells[3].textContent = duration;
+            saveSessions();
+            updateTotalDuration();
+        }
+
+        function saveSessions() {
+            const sessions = [];
+            for (let i = 0; i < sessionTable.rows.length; i++) {
+                const row = sessionTable.rows[i];
+                sessions.push({
+                    sl: row.cells[0].textContent,
+                    startTime: row.cells[1].textContent,
+                    endTime: row.cells[2].textContent,
+                    duration: row.cells[3].textContent
+                });
+            }
+            localStorage.setItem('sessions', JSON.stringify(sessions));
+        }
+
+        function updateTotalDuration() {
+            let totalSeconds = 0;
+            for (let i = 0; i < sessionTable.rows.length; i++) {
+                const durationText = sessionTable.rows[i].cells[3].textContent;
+                const match = durationText.match(/(\d+) Hr (\d+) Min/);
+                if (match) {
+                    const h = parseInt(match[1]);
+                    const m = parseInt(match[2]);
+                    totalSeconds += h * 3600 + m * 60;
+                }
+            }
+            const totalHours = Math.floor(totalSeconds / 3600);
+            const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+            totalDurationDiv.innerHTML = `Total Study Duration: <br> ${totalHours} Hours ${totalMinutes} Minutes`;
+        }
+
+        sessionButton.addEventListener('click', () => {
+            if (sessionActive) {
+                stopSession();
+            } else {
+                startSession();
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            sessionTable.innerHTML = '';
+            localStorage.removeItem('sessions');
+            updateTotalDuration();
+        });
+
+        // Load sessions on page load
+        window.addEventListener('load', () => {
+            const savedSessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+            savedSessions.forEach(session => {
+                const row = sessionTable.insertRow();
+                row.insertCell(0).textContent = session.sl;
+                row.insertCell(1).textContent = session.startTime;
+                row.insertCell(2).textContent = session.endTime;
+                row.insertCell(3).textContent = session.duration;
+            });
+            updateTotalDuration();
+        });
+
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
+    </script>
+</body>
+</html>
