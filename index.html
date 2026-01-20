@@ -13,10 +13,11 @@
 
         #clock {
             font-weight: 900;
-            font-size: 4em;
+            font-size: 3.5em;
             text-align: center;
             color: white;
-            padding-top: 1em;
+            /* padding-top: 1em; */
+            padding: 1.5em 0 1em 0;
         }
         #clock sub {
             font-size: 0.5em;
@@ -135,6 +136,8 @@
             sessionButton.textContent = 'Stop Session';
             sessionInterval = setInterval(updateDuration, 1000);
             addSessionToTable(sessionStartTime, null, '0 Hr 0 Min');
+            localStorage.setItem('sessionActive', 'true');
+            localStorage.setItem('sessionStartTime', sessionStartTime.toISOString());
         }
 
         function stopSession() {
@@ -144,6 +147,8 @@
             const duration = calculateDuration(sessionStartTime, endTime);
             updateLastSession(endTime, duration);
             sessionButton.textContent = 'Start Session';
+            localStorage.setItem('sessionActive', 'false');
+            localStorage.removeItem('sessionStartTime');
         }
 
         function updateDuration() {
@@ -163,21 +168,24 @@
         }
 
         function addSessionToTable(startTime, endTime, duration) {
-            const row = sessionTable.insertRow();
+            const row = sessionTable.insertRow(0);
             const slCell = row.insertCell(0);
             const startCell = row.insertCell(1);
             const endCell = row.insertCell(2);
             const durationCell = row.insertCell(3);
-            slCell.textContent = sessionTable.rows.length;
             startCell.textContent = startTime.toLocaleTimeString();
             endCell.textContent = endTime ? endTime.toLocaleTimeString() : '';
             durationCell.textContent = duration;
+            // Renumber SL from bottom to top: bottom=1, top=length
+            for (let i = 0; i < sessionTable.rows.length; i++) {
+                sessionTable.rows[i].cells[0].textContent = sessionTable.rows.length - i;
+            }
             saveSessions();
             updateTotalDuration();
         }
 
         function updateLastSession(endTime, duration) {
-            const lastRow = sessionTable.rows[sessionTable.rows.length - 1];
+            const lastRow = sessionTable.rows[0]; // Active session is at top (index 0)
             if (endTime) {
                 lastRow.cells[2].textContent = endTime.toLocaleTimeString();
             }
@@ -240,7 +248,19 @@
                 row.insertCell(2).textContent = session.endTime;
                 row.insertCell(3).textContent = session.duration;
             });
+            // Renumber SL after loading
+            for (let i = 0; i < sessionTable.rows.length; i++) {
+                sessionTable.rows[i].cells[0].textContent = sessionTable.rows.length - i;
+            }
             updateTotalDuration();
+
+            // Check for active session
+            if (localStorage.getItem('sessionActive') === 'true') {
+                sessionActive = true;
+                sessionStartTime = new Date(localStorage.getItem('sessionStartTime'));
+                sessionButton.textContent = 'Stop Session';
+                sessionInterval = setInterval(updateDuration, 1000);
+            }
         });
 
         setInterval(updateClock, 1000);
